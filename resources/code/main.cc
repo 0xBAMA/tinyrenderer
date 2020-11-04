@@ -15,10 +15,10 @@
  */
 
 
-#include "rttnw.h"
+#include "tinyrenderer.h"
 
 int main(int argc, char *argv[])
 {
-    rttnw r;
+    tinyrenderer r;
     return 0;
 }

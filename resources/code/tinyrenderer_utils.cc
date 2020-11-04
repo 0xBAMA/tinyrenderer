@@ -1,4 +1,4 @@
-#include "rttnw.h"
+#include "tinyrenderer.h"
 // This contains the lower level code
 
 //TinyOBJLoader - This has to be included in a .cc file, so it's here for right now
@@ -7,7 +7,7 @@
 #include "tiny_obj_loader.h"
 
 
-void rttnw::create_window()
+void tinyrenderer::create_window()
 {
 	if(SDL_Init( SDL_INIT_EVERYTHING ) != 0)
 	{
@@ -152,7 +152,7 @@ void rttnw::create_window()
 	colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
 }
 
-void rttnw::gl_setup()
+void tinyrenderer::gl_setup()
 {
 	// some info on your current platform
 	const GLubyte *renderer = glGetString( GL_RENDERER ); // get renderer string
@@ -212,9 +212,22 @@ void rttnw::gl_setup()
     cout << "done." << endl;
 
 
-    // create the image textures
+	// create the image textures
+    glGenTextures(1, &display_texture);
+    glActiveTexture(GL_TEXTURE0+1);
+    glBindTexture(GL_TEXTURE_2D, display_texture);
 
-    // compile the compute shader to do the raycasting
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    // glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    // glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	// buffer the averaged data to the GPU
+	glBindTexture(GL_TEXTURE_2D, display_texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, WIDTH, HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, &image_data[0]);
+
 
     // ...
 
@@ -236,7 +249,7 @@ static void HelpMarker(const char* desc)
 	}
 }
 
-void rttnw::draw_everything()
+void tinyrenderer::draw_everything()
 {
 	ImGuiIO& io = ImGui::GetIO(); (void)io; // void cast prevents unused variable warning
     //get the screen dimensions and pass in as uniforms
@@ -304,7 +317,7 @@ void rttnw::draw_everything()
 }
 
 
-void rttnw::quit()
+void tinyrenderer::quit()
 {
   //shutdown everything
   ImGui_ImplOpenGL3_Shutdown();

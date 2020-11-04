@@ -1,14 +1,14 @@
-#ifndef RTTNW
-#define RTTNW
+#ifndef TINYRENDERER
+#define TINYRENDERER
 
 #include "includes.h"
 
-class rttnw
+class tinyrenderer
 {
 public:
 
-	rttnw();
-	~rttnw();
+	tinyrenderer();
+	~tinyrenderer();
 
 private:
 
@@ -20,7 +20,9 @@ private:
 	GLuint display_shader;
 	GLuint display_vao;
 	GLuint display_vbo;
+	GLuint display_texture;
 
+    std::vector<unsigned char> image_data;
 
 	void create_window();
 	void gl_setup();

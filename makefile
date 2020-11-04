@@ -9,7 +9,7 @@ msg:
 		@date
 		@echo
 
-exe: resources/imgui/imgui.o resources/code/lodepng.o resources/code/perlin.o rttnw.o utils.o
+exe: resources/imgui/imgui.o resources/code/lodepng.o resources/code/perlin.o tinyrenderer.o utils.o
 		g++ -o exe resources/code/main.cc *.o resources/imgui/*.o resources/code/*.o       ${FLAGS}
 
 resources/imgui/imgui.o: resources/imgui/*.cc
@@ -22,11 +22,11 @@ resources/imgui/imgui.o: resources/imgui/*.cc
 		@echo
 
 
-utils.o: resources/code/rttnw.h resources/code/rttnw_utils.cc
-		g++ -c -o utils.o resources/code/rttnw_utils.cc               ${FLAGS}
+utils.o: resources/code/tinyrenderer.h resources/code/tinyrenderer_utils.cc
+		g++ -c -o utils.o resources/code/tinyrenderer_utils.cc               ${FLAGS}
 
-rttnw.o: resources/code/rttnw.h resources/code/rttnw.cc
-		g++ -c -o rttnw.o resources/code/rttnw.cc                  ${FLAGS}
+tinyrenderer.o: resources/code/tinyrenderer.h resources/code/tinyrenderer.cc
+		g++ -c -o tinyrenderer.o resources/code/tinyrenderer.cc                  ${FLAGS}
 
 resources/code/debug.o: resources/code/debug.cc
 		g++ -c -o resources/code/debug.o resources/code/debug.cc                        ${FLAGS}

@@ -72,6 +72,8 @@ using std::endl;
 // #include "vat.h"
 
 
+#define WIDTH 256
+#define HEIGHT 256
 
 
 #endif
