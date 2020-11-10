@@ -34,13 +34,22 @@ private:
 
 
 	// main tinyrenderer funcs
-	void draw_wireframe(std::string path);
-	void draw_triangles(std::string path);	
+	void load_OBJ(std::string path);
+	void draw_wireframe();
+	void draw_triangles();	
 
 	// tinyrenderer helper funcs
 	void draw_line(glm::ivec2 p0, glm::ivec2 p1, glm::vec4 color);
 	void draw_triangle(glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2, glm::vec4 color);
 	void set_pixel(glm::ivec2 p, glm::vec4 color);
+
+public:
+	// OBJ data
+	std::vector<glm::vec4> vertices;
+	std::vector<glm::vec3> texcoords;
+	std::vector<glm::vec3> normals;
+
+	std::vector<glm::ivec3> triangle_indices;
 		
 	// tinyrenderer draw target
 	std::vector<unsigned char> image_data;

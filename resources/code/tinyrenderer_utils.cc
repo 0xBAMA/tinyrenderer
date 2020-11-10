@@ -1,10 +1,93 @@
 #include "tinyrenderer.h"
 // This contains the lower level code
 
-//TinyOBJLoader - This has to be included in a .cc file, so it's here for right now
+//TinyOBJLoader implementation define - This has to be included in a .cc file, so it's here for right now
 #define TINYOBJLOADER_IMPLEMENTATION
-// #define TINYOBJLOADER_USE_DOUBLE
 #include "tiny_obj_loader.h"
+
+// tinyobj callbacks
+//  user_data is passed in as void, then cast as 'tinyrenderer' class to push vertices, normals, texcoords, index, material info
+void vertex_cb(void *user_data, float x, float y, float z, float w)
+{
+   tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+}
+
+void normal_cb(void *user_data, float x, float y, float z) 
+{
+   tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+}
+
+void texcoord_cb(void *user_data, float x, float y, float z)
+{
+   tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+}
+
+void index_cb(void *user_data, tinyobj::index_t *indices, int num_indices)
+{
+   tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+}
+
+void usemtl_cb(void *user_data, const char *name, int material_idx)
+{
+   tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+}
+
+void mtllib_cb(void *user_data, const tinyobj::material_t *materials, int num_materials)
+{
+   tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+}
+
+void group_cb(void *user_data, const char **names, int num_names)
+{
+   tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+}
+
+void object_cb(void *user_data, const char *name)
+{
+   tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+}
+
+void tinyrenderer::load_OBJ(std::string filename)
+{
+    tinyobj::callback_t cb;
+    cb.vertex_cb = vertex_cb;
+    cb.normal_cb = normal_cb;
+    cb.texcoord_cb = texcoord_cb;
+    cb.index_cb = index_cb;
+    cb.usemtl_cb = usemtl_cb;
+    cb.mtllib_cb = mtllib_cb;
+    cb.group_cb = group_cb;
+    cb.object_cb = object_cb;
+
+    std::string warn;
+    std::string err;
+
+    std::ifstream ifs(filename.c_str());
+    tinyobj::MaterialFileReader mtlReader(".");
+
+    bool ret = tinyobj::LoadObjWithCallback(ifs, cb, this, &mtlReader, &warn, &err);
+
+    if (!warn.empty())
+    {
+        std::cout << "WARN: " << warn << std::endl;
+    }
+
+    if (!err.empty())
+    {
+        std::cerr << err << std::endl;
+    }
+
+    if (!ret)
+    {
+        std::cerr << "Failed to parse .obj" << std::endl;
+    }
+
+    
+ 
+}
+
+
+
 
 
 void tinyrenderer::create_window()
@@ -41,7 +124,9 @@ void tinyrenderer::create_window()
 // window = SDL_CreateWindow( "OpenGL Window", 0, 0, total_screen_width, total_screen_height, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN | SDL_WINDOW_BORDERLESS );
     window = SDL_CreateWindow( "OpenGL Window", 0, 0, WIDTH, HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE );
     SDL_ShowWindow(window);
+    // SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
+    
     cout << "done." << endl;
 
 
@@ -224,7 +309,7 @@ void tinyrenderer::gl_setup()
     std::uniform_int_distribution<int> pdisth(0,HEIGHT); 
     std::uniform_real_distribution<float> cdist(0.0, 1.0); 
 
-    for(int i = 0; i < 2000; i++)
+    for(int i = 0; i < 50000; i++)
         draw_line(glm::ivec2(pdistw(gen), pdisth(gen)), glm::ivec2(pdistw(gen), pdisth(gen)), glm::vec4(cdist(gen), cdist(gen), cdist(gen), 1.0));
 
     
@@ -350,15 +435,13 @@ void tinyrenderer::draw_everything()
 
 
 
-void tinyrenderer::draw_wireframe(std::string path)
+void tinyrenderer::draw_wireframe()
 {
-    cout << "Loading OBJ from " << path << endl;
 
 }
 
-void tinyrenderer::draw_triangles(std::string path)
+void tinyrenderer::draw_triangles()
 {
-    cout << "Loading OBJ from " << path << endl;
 
 }
 

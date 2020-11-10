@@ -71,7 +71,6 @@ using std::endl;
 // need to incorporate the BigInt stuff in order to use
 // #include "vat.h"
 
-
 #define WIDTH  1024
 #define HEIGHT 1024
 
