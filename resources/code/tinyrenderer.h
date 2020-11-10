@@ -38,9 +38,9 @@ private:
 	void draw_triangles(std::string path);	
 
 	// tinyrenderer helper funcs
-	void draw_line();
-	void draw_triangle();
-	void set_pixel();
+	void draw_line(glm::ivec2 p0, glm::ivec2 p1, glm::vec4 color);
+	void draw_triangle(glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2, glm::vec4 color);
+	void set_pixel(glm::ivec2 p, glm::vec4 color);
 		
 	// tinyrenderer draw target
 	std::vector<unsigned char> image_data;

@@ -214,9 +214,20 @@ void tinyrenderer::gl_setup()
     ///////////////////////
     
     t1 = std::chrono::high_resolution_clock::now();
+    image_data.resize(HEIGHT*WIDTH*4, 0); // 4 channels, might do something with alpha eventually
 
     //do the software rendering part
+    // initially doing some random lines, for testing
 
+    std::default_random_engine gen;
+    std::uniform_int_distribution<int> pdistw(0,WIDTH); 
+    std::uniform_int_distribution<int> pdisth(0,HEIGHT); 
+    std::uniform_real_distribution<float> cdist(0.0, 1.0); 
+
+    for(int i = 0; i < 2000; i++)
+        draw_line(glm::ivec2(pdistw(gen), pdisth(gen)), glm::ivec2(pdistw(gen), pdisth(gen)), glm::vec4(cdist(gen), cdist(gen), cdist(gen), 1.0));
+
+    
     t2 = std::chrono::high_resolution_clock::now();
     software_renderer_time = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
 
@@ -225,7 +236,9 @@ void tinyrenderer::gl_setup()
     t1 = std::chrono::high_resolution_clock::now();
 
     //png output
-
+    std::string filename = std::string("test.png");
+    lodepng::encode(filename.c_str(), image_data, WIDTH, HEIGHT); 
+    
     t2 = std::chrono::high_resolution_clock::now();
     png_output_time = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
 
@@ -291,17 +304,17 @@ void tinyrenderer::draw_everything()
 
     // info window
     ImGui::SetNextWindowPos(ImVec2(10,10));
-    ImGui::SetNextWindowSize(ImVec2(250,105));
+    ImGui::SetNextWindowSize(ImVec2(260,105));
     ImGui::Begin("Info", NULL, 0);
 
     //do the other widgets
     // HelpMarker("shut up, compiler");
 
-    //show timing info for the various operations in the setup
-    ImGui::Text(" OBJ Loading:        %8.2f \xC2\xB5s", obj_load_time);
-    ImGui::Text(" Render:             %8.2f \xC2\xB5s", software_renderer_time);
-    ImGui::Text(" PNG Output:         %8.2f \xC2\xB5s", png_output_time);
-    ImGui::Text(" Texture Buffering:  %8.2f \xC2\xB5s", texture_buffer_time);
+    //show timing info for the various operations in the setup, note unicode (UTF-8) escape sequence for micro 
+    ImGui::Text(" OBJ Loading:        %10.2f \xC2\xB5s", obj_load_time);
+    ImGui::Text(" Render:             %10.2f \xC2\xB5s", software_renderer_time);
+    ImGui::Text(" PNG Output:         %10.2f \xC2\xB5s", png_output_time);
+    ImGui::Text(" Texture Buffering:  %10.2f \xC2\xB5s", texture_buffer_time);
 
     
     ImGui::End();
@@ -328,6 +341,86 @@ void tinyrenderer::draw_everything()
             pquit = true;
     }
 }
+
+
+
+void tinyrenderer::draw_wireframe(std::string path)
+{
+    cout << "Loading OBJ from " << path << endl;
+
+}
+
+void tinyrenderer::draw_triangles(std::string path)
+{
+    cout << "Loading OBJ from " << path << endl;
+
+}
+
+void tinyrenderer::draw_line(glm::ivec2 p0, glm::ivec2 p1, glm::vec4 color)
+{ 
+    int x0 = p0.x;
+    int y0 = p0.y;
+    int x1 = p1.x;
+    int y1 = p1.y;
+
+    bool steep = false; 
+    if (std::abs(x0-x1)<std::abs(y0-y1))
+    { 
+        std::swap(x0, y0); 
+        std::swap(x1, y1); 
+        steep = true; 
+    } 
+
+    if (x0>x1)
+    { 
+        std::swap(x0, x1); 
+        std::swap(y0, y1); 
+    } 
+
+    int dx = x1-x0; 
+    int dy = y1-y0; 
+
+    int derror2 = std::abs(dy)*2; 
+    int error2 = 0; 
+    int y = y0; 
+
+    for (int x=x0; x<=x1; x++)
+    { 
+        if (steep)
+        { 
+            set_pixel(glm::ivec2(y, x), color); 
+        }
+        else
+        { 
+            set_pixel(glm::ivec2(x, y), color); 
+        } 
+        error2 += derror2; 
+        if (error2 > dx)
+        { 
+            y += (y1>y0?1:-1); 
+            error2 -= dx*2; 
+        } 
+    } 
+}
+
+void tinyrenderer::draw_triangle(glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2, glm::vec4 color)
+{
+    
+}
+
+void tinyrenderer::set_pixel(glm::ivec2 p, glm::vec4 color)
+{
+    // base is where red is located, followed by g, b, a
+    int base = (p.x + (WIDTH * p.y)) * 4;
+        
+    image_data[base]   = static_cast<int>(255.999 * color.r); 
+    image_data[base+1] = static_cast<int>(255.999 * color.g); 
+    image_data[base+2] = static_cast<int>(255.999 * color.b); 
+    image_data[base+3] = static_cast<int>(255.999 * color.a); 
+}
+
+
+
 
 
 void tinyrenderer::quit()
