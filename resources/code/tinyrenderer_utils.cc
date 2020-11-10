@@ -39,7 +39,7 @@ void tinyrenderer::create_window()
     cout << "creating window...";
 
 // window = SDL_CreateWindow( "OpenGL Window", 0, 0, total_screen_width, total_screen_height, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN | SDL_WINDOW_BORDERLESS );
-    window = SDL_CreateWindow( "OpenGL Window", 0, 0, total_screen_width, total_screen_height, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE );
+    window = SDL_CreateWindow( "OpenGL Window", 0, 0, WIDTH, HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE );
     SDL_ShowWindow(window);
 
     cout << "done." << endl;
@@ -258,8 +258,9 @@ void tinyrenderer::gl_setup()
 
     // buffer the averaged data to the GPU
     glBindTexture(GL_TEXTURE_2D, display_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, WIDTH, HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, &image_data[0]);
-
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8UI, WIDTH, HEIGHT, 0, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, &image_data[0]);
+    glBindImageTexture(1, display_texture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA8UI);
+    
     t2 = std::chrono::high_resolution_clock::now();
     texture_buffer_time = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
 
@@ -311,10 +312,15 @@ void tinyrenderer::draw_everything()
     // HelpMarker("shut up, compiler");
 
     //show timing info for the various operations in the setup, note unicode (UTF-8) escape sequence for micro 
-    ImGui::Text(" OBJ Loading:        %10.2f \xC2\xB5s", obj_load_time);
-    ImGui::Text(" Render:             %10.2f \xC2\xB5s", software_renderer_time);
-    ImGui::Text(" PNG Output:         %10.2f \xC2\xB5s", png_output_time);
-    ImGui::Text(" Texture Buffering:  %10.2f \xC2\xB5s", texture_buffer_time);
+    // ImGui::Text(" OBJ Loading:        %10.2f \xC2\xB5s", obj_load_time);
+    // ImGui::Text(" Render:             %10.2f \xC2\xB5s", software_renderer_time);
+    // ImGui::Text(" PNG Output:         %10.2f \xC2\xB5s", png_output_time);
+    // ImGui::Text(" Texture Buffering:  %10.2f \xC2\xB5s", texture_buffer_time);
+
+    ImGui::Text(" OBJ Loading:        %7.2f ms", obj_load_time/1000.0);
+    ImGui::Text(" Render:             %7.2f ms", software_renderer_time/1000.0);
+    ImGui::Text(" PNG Output:         %7.2f ms", png_output_time/1000.0);
+    ImGui::Text(" Texture Buffering:  %7.2f ms", texture_buffer_time/1000.0);
 
     
     ImGui::End();
@@ -413,10 +419,10 @@ void tinyrenderer::set_pixel(glm::ivec2 p, glm::vec4 color)
     // base is where red is located, followed by g, b, a
     int base = (p.x + (WIDTH * p.y)) * 4;
         
-    image_data[base]   = static_cast<int>(255.999 * color.r); 
-    image_data[base+1] = static_cast<int>(255.999 * color.g); 
-    image_data[base+2] = static_cast<int>(255.999 * color.b); 
-    image_data[base+3] = static_cast<int>(255.999 * color.a); 
+    image_data[base]   = static_cast<unsigned char>(255.999 * color.r); 
+    image_data[base+1] = static_cast<unsigned char>(255.999 * color.g); 
+    image_data[base+2] = static_cast<unsigned char>(255.999 * color.b); 
+    image_data[base+3] = static_cast<unsigned char>(255.999 * color.a); 
 }
 
 
