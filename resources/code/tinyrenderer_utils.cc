@@ -122,7 +122,7 @@ void tinyrenderer::create_window()
     colors[ImGuiCol_Separator]              = ImVec4(0.28f, 0.18f, 0.06f, 1.00f);
     colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.33f, 0.15f, 0.02f, 1.00f);
     colors[ImGuiCol_SeparatorActive]        = ImVec4(0.42f, 0.18f, 0.06f, 1.00f);
-    colors[ImGuiCol_ResizeGrip]             = ImVec4(0.25f, 0.12f, 0.01f, 0.78f);
+    colors[ImGuiCol_ResizeGrip]             = ImVec4(0.10f, 0.05f, 0.00f, 1.00f);
     colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.33f, 0.15f, 0.02f, 1.00f);
     colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.25f, 0.12f, 0.01f, 0.78f);
     colors[ImGuiCol_Tab]                    = ImVec4(0.25f, 0.12f, 0.01f, 0.78f);
@@ -291,14 +291,17 @@ void tinyrenderer::draw_everything()
 
     // info window
     ImGui::SetNextWindowPos(ImVec2(10,10));
-    ImGui::SetNextWindowSize(ImVec2(256,385));
+    ImGui::SetNextWindowSize(ImVec2(250,105));
     ImGui::Begin("Info", NULL, 0);
 
     //do the other widgets
     // HelpMarker("shut up, compiler");
 
     //show timing info for the various operations in the setup
-    
+    ImGui::Text(" OBJ Loading:        %8.2f \xC2\xB5s", obj_load_time);
+    ImGui::Text(" Render:             %8.2f \xC2\xB5s", software_renderer_time);
+    ImGui::Text(" PNG Output:         %8.2f \xC2\xB5s", png_output_time);
+    ImGui::Text(" Texture Buffering:  %8.2f \xC2\xB5s", texture_buffer_time);
 
     
     ImGui::End();

@@ -24,10 +24,10 @@ private:
 	void gl_setup();
 	void draw_everything();
 
-	float obj_load_time;
-	float software_renderer_time;	
-	float png_output_time;
-	float texture_buffer_time;
+	double obj_load_time;
+	double software_renderer_time;	
+	double png_output_time;
+	double texture_buffer_time;
 		
 	bool pquit;
 	void quit();
