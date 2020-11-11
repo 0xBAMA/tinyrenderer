@@ -9,44 +9,62 @@
 //  user_data is passed in as void, then cast as 'tinyrenderer' class to push vertices, normals, texcoords, index, material info
 void vertex_cb(void *user_data, float x, float y, float z, float w)
 {
-   tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+    tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data);
+
+    t->vertices.push_back(glm::vec4(x,y,z,w));
 }
 
 void normal_cb(void *user_data, float x, float y, float z) 
 {
-   tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+    tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+
+    t->normals.push_back(glm::vec3(x,y,z));
 }
 
 void texcoord_cb(void *user_data, float x, float y, float z)
 {
-   tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+    tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+
+    t->texcoords.push_back(glm::vec3(x,y,z));
 }
 
 void index_cb(void *user_data, tinyobj::index_t *indices, int num_indices)
 {
-   tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+    tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+
+    if(num_indices == 3) // this is a triangle
+    {
+        // OBJ uses 1-indexing, convert to 0-indexing
+        t->triangle_indices.push_back(glm::ivec3(indices[0].vertex_index-1,   indices[1].vertex_index-1,   indices[2].vertex_index-1));
+        t->normal_indices.push_back(  glm::ivec3(indices[0].normal_index-1,   indices[1].normal_index-1,   indices[2].normal_index-1));
+        t->texcoord_indices.push_back(glm::ivec3(indices[0].texcoord_index-1, indices[1].texcoord_index-1, indices[2].texcoord_index-1));
+    }
+    
+    // lines, points have a different number of indicies
+    //  might want to handle these
 }
 
 void usemtl_cb(void *user_data, const char *name, int material_idx)
 {
-   tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+    tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
 }
 
 void mtllib_cb(void *user_data, const tinyobj::material_t *materials, int num_materials)
 {
-   tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+    tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
 }
 
 void group_cb(void *user_data, const char **names, int num_names)
 {
-   tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+    tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
 }
 
 void object_cb(void *user_data, const char *name)
 {
-   tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
+    tinyrenderer *t = reinterpret_cast<tinyrenderer *>(user_data); 
 }
 
+// this is where the callbacks are used
 void tinyrenderer::load_OBJ(std::string filename)
 {
     tinyobj::callback_t cb;
@@ -81,9 +99,6 @@ void tinyrenderer::load_OBJ(std::string filename)
     {
         std::cerr << "Failed to parse .obj" << std::endl;
     }
-
-    
- 
 }
 
 
@@ -292,7 +307,8 @@ void tinyrenderer::gl_setup()
     auto t1 = std::chrono::high_resolution_clock::now();
 
     //obj loading
-
+    load_OBJ(std::string("resources/obj/african_head/african_head.obj"));
+    
     auto t2 = std::chrono::high_resolution_clock::now();
     obj_load_time = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
 
@@ -309,9 +325,10 @@ void tinyrenderer::gl_setup()
     std::uniform_int_distribution<int> pdisth(0,HEIGHT); 
     std::uniform_real_distribution<float> cdist(0.0, 1.0); 
 
-    for(int i = 0; i < 50000; i++)
-        draw_line(glm::ivec2(pdistw(gen), pdisth(gen)), glm::ivec2(pdistw(gen), pdisth(gen)), glm::vec4(cdist(gen), cdist(gen), cdist(gen), 1.0));
+    // for(int i = 0; i < 50000; i++)
+        // draw_line(glm::ivec2(pdistw(gen), pdisth(gen)), glm::ivec2(pdistw(gen), pdisth(gen)), glm::vec4(cdist(gen), cdist(gen), cdist(gen), 1.0));
 
+    draw_wireframe();
     
     t2 = std::chrono::high_resolution_clock::now();
     software_renderer_time = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
@@ -437,12 +454,29 @@ void tinyrenderer::draw_everything()
 
 void tinyrenderer::draw_wireframe()
 {
+    // render triangles as 3 lines making up their outline 
+    for(size_t i = 0; i < triangle_indices.size(); i++)
+    {
+        glm::ivec3 p0, p1, p2;
+        cout << i << ": ";
+        cout << triangle_indices[i].x << " ";
+        cout << triangle_indices[i].y << " ";
+        cout << triangle_indices[i].z;
+        cout << endl << std::flush;
 
+        p0 = vertices[triangle_indices[i].x];
+        p1 = vertices[triangle_indices[i].y];
+        p2 = vertices[triangle_indices[i].z];
+        
+        draw_line(p0.xy(), p1.xy(), glm::vec4( 0.5, 0.2, 0.1, 1.0));
+        draw_line(p1.xy(), p2.xy(), glm::vec4( 0.5, 0.2, 0.1, 1.0));
+        draw_line(p0.xy(), p2.xy(), glm::vec4( 0.5, 0.2, 0.1, 1.0));
+    }
 }
 
 void tinyrenderer::draw_triangles()
 {
-
+    // render triangles as triangles
 }
 
 void tinyrenderer::draw_line(glm::ivec2 p0, glm::ivec2 p1, glm::vec4 color)

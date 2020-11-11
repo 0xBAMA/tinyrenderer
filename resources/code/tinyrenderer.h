@@ -44,12 +44,16 @@ private:
 	void set_pixel(glm::ivec2 p, glm::vec4 color);
 
 public:
-	// OBJ data
+// OBJ data	
+	// this may vary in length
 	std::vector<glm::vec4> vertices;
-	std::vector<glm::vec3> texcoords;
 	std::vector<glm::vec3> normals;
+	std::vector<glm::vec3> texcoords;
 
+	// these should all be the same length, the number of triangles
 	std::vector<glm::ivec3> triangle_indices;
+	std::vector<glm::ivec3> normal_indices;
+	std::vector<glm::ivec3> texcoord_indices;
 		
 	// tinyrenderer draw target
 	std::vector<unsigned char> image_data;
