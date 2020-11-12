@@ -336,7 +336,8 @@ void tinyrenderer::gl_setup()
     // for(int i = 0; i < 50000; i++)
         // draw_line(glm::ivec2(pdistw(gen), pdisth(gen)), glm::ivec2(pdistw(gen), pdisth(gen)), glm::vec4(cdist(gen), cdist(gen), cdist(gen), 1.0));
 
-    draw_wireframe();
+    // draw_wireframe();
+    draw_triangles();
     
     t2 = std::chrono::high_resolution_clock::now();
     software_renderer_time = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
@@ -466,11 +467,6 @@ void tinyrenderer::draw_wireframe()
     for(size_t i = 0; i < triangle_indices.size(); i++)
     {
         glm::vec3 p0, p1, p2;
-        // cout << i << ": ";
-        // cout << triangle_indices[i].x << " ";
-        // cout << triangle_indices[i].y << " ";
-        // cout << triangle_indices[i].z;
-        // cout << endl << std::flush;
 
         p0 = vertices[triangle_indices[i].x];  p0.x += 1.0f;  p0.x *= (WIDTH/2.0f);  p0.y += 1.0f;  p0.y *= (HEIGHT/2.0f); 
         p1 = vertices[triangle_indices[i].y];  p1.x += 1.0f;  p1.x *= (WIDTH/2.0f);  p1.y += 1.0f;  p1.y *= (HEIGHT/2.0f);
@@ -484,7 +480,29 @@ void tinyrenderer::draw_wireframe()
 
 void tinyrenderer::draw_triangles()
 {
+    std::default_random_engine gen;
+    std::uniform_real_distribution<float> cdist(0.0, 1.0); 
+
     // render triangles as triangles
+    for(size_t i = 0; i < triangle_indices.size(); i++)
+    {
+        glm::vec3 p0, p1, p2;
+
+        p0 = vertices[triangle_indices[i].x];  
+        p1 = vertices[triangle_indices[i].y];
+        p2 = vertices[triangle_indices[i].z];
+
+        glm::vec3 n = glm::normalize(glm::cross(p2-p0, p1-p0));
+        float intensity = glm::dot(n, glm::vec3(0,0,-1));
+        
+        p0.x += 1.0f;  p0.x *= (WIDTH/2.0f);  p0.y += 1.0f;  p0.y *= (HEIGHT/2.0f); 
+        p1.x += 1.0f;  p1.x *= (WIDTH/2.0f);  p1.y += 1.0f;  p1.y *= (HEIGHT/2.0f);
+        p2.x += 1.0f;  p2.x *= (WIDTH/2.0f);  p2.y += 1.0f;  p2.y *= (HEIGHT/2.0f);
+
+        // draw_triangle(glm::ivec2(p0.xy()), glm::ivec2(p1.xy()), glm::ivec2(p2.xy()), glm::vec4( 0.5, 0.2*cdist(gen), cdist(gen), 1.0));
+        if(intensity > 0)
+            draw_triangle(glm::ivec2(p0.xy()), glm::ivec2(p1.xy()), glm::ivec2(p2.xy()), glm::vec4(0.5*intensity, 0.2*cdist(gen)*intensity, cdist(gen)*intensity, 1.0));
+    } 
 }
 
 void tinyrenderer::draw_line(glm::ivec2 p0, glm::ivec2 p1, glm::vec4 color)
@@ -534,9 +552,36 @@ void tinyrenderer::draw_line(glm::ivec2 p0, glm::ivec2 p1, glm::vec4 color)
     } 
 }
 
+glm::vec3 tinyrenderer::barycentric(glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2, glm::ivec2 P)
+{
+    glm::vec3 u = glm::cross(glm::vec3(p2[0]-p0[0], p1[0]-p0[0], p0[0]-P[0]), glm::vec3(p2[1]-p0[1], p1[1]-p0[1], p0[1]-P[1]));
+    /* `pts` and `P` has integer value as coordinates
+       so `abs(u[2])` < 1 means `u[2]` is 0, that means
+       triangle is degenerate, in this case return something with negative coordinates */
+    if (std::abs(u[2])<1) return glm::vec3(-1,1,1);
+    return glm::vec3(1.f-(u.x+u.y)/u.z, u.y/u.z, u.x/u.z);  
+}
+
 void tinyrenderer::draw_triangle(glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2, glm::vec4 color)
 {
-    
+    glm::ivec2 pts[3]; pts[0] = p0; pts[1] = p1; pts[2] = p2;
+    glm::ivec2 bboxmin(WIDTH-1, HEIGHT-1); 
+    glm::ivec2 bboxmax(0, 0); 
+    glm::ivec2 clamp(WIDTH-1, HEIGHT-1); 
+    for (int i=0; i<3; i++) { 
+        for (int j=0; j<2; j++) { 
+            bboxmin[j] = std::max(0,        std::min(bboxmin[j], pts[i][j])); 
+            bboxmax[j] = std::min(clamp[j], std::max(bboxmax[j], pts[i][j])); 
+        } 
+    } 
+    glm::ivec2 P; 
+    for (P.x=bboxmin.x; P.x<=bboxmax.x; P.x++) { 
+        for (P.y=bboxmin.y; P.y<=bboxmax.y; P.y++) { 
+            glm::vec3 bc_screen  = barycentric(p0, p1, p2, P); 
+            if (bc_screen.x<0 || bc_screen.y<0 || bc_screen.z<0) continue; 
+            set_pixel(P, color); 
+        } 
+    }  
 }
 
 void tinyrenderer::set_pixel(glm::ivec2 p, glm::vec4 color)

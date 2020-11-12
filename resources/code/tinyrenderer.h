@@ -40,6 +40,7 @@ private:
 
 	// tinyrenderer helper funcs
 	void draw_line(glm::ivec2 p0, glm::ivec2 p1, glm::vec4 color);
+	glm::vec3 barycentric(glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2, glm::ivec2 P);
 	void draw_triangle(glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2, glm::vec4 color);
 	void set_pixel(glm::ivec2 p, glm::vec4 color);
 
@@ -57,6 +58,7 @@ public:
 		
 	// tinyrenderer draw target
 	std::vector<unsigned char> image_data;
+	std::vector<int> depth_data;
 };
 
 #endif
