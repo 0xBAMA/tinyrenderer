@@ -39,9 +39,12 @@ private:
 	void draw_triangles();	
 
 	// tinyrenderer helper funcs
+	glm::vec3 barycentric(glm::vec3 p0, glm::vec3 p1, glm::vec3 p2, glm::vec3 P);
+	glm::vec3 world2screen(glm::vec3 v);
+
+	// tinyrenderer drawing functions
 	void draw_line(glm::ivec2 p0, glm::ivec2 p1, glm::vec4 color);
-	glm::vec3 barycentric(glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2, glm::ivec2 P);
-	void draw_triangle(glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2, glm::vec4 color);
+	void draw_triangle(glm::vec3 *pts, glm::vec4 color);
 	void set_pixel(glm::ivec2 p, glm::vec4 color);
 
 public:
@@ -58,7 +61,7 @@ public:
 		
 	// tinyrenderer draw target
 	std::vector<unsigned char> image_data;
-	std::vector<int> depth_data;
+	std::vector<float> depth_data;
 };
 
 #endif

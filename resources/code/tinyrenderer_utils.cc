@@ -324,6 +324,7 @@ void tinyrenderer::gl_setup()
     
     t1 = std::chrono::high_resolution_clock::now();
     image_data.resize(HEIGHT*WIDTH*4, 0); // 4 channels, might do something with alpha eventually
+    depth_data.resize(HEIGHT*WIDTH, -std::numeric_limits<float>::max()); // initialize z buffer at most negative value
 
     //do the software rendering part
     // initially doing some random lines, for testing
@@ -478,6 +479,11 @@ void tinyrenderer::draw_wireframe()
     }
 }
 
+glm::vec3 tinyrenderer::world2screen(glm::vec3 v)
+{
+    return glm::vec3(int((v.x+1.0f)*(WIDTH/2.0f)), int((v.y+1.0f)*(HEIGHT/2.0f)), v.z);
+}
+
 void tinyrenderer::draw_triangles()
 {
     std::default_random_engine gen;
@@ -494,14 +500,15 @@ void tinyrenderer::draw_triangles()
 
         glm::vec3 n = glm::normalize(glm::cross(p2-p0, p1-p0));
         float intensity = glm::dot(n, glm::vec3(0,0,-1));
-        
-        p0.x += 1.0f;  p0.x *= (WIDTH/2.0f);  p0.y += 1.0f;  p0.y *= (HEIGHT/2.0f); 
-        p1.x += 1.0f;  p1.x *= (WIDTH/2.0f);  p1.y += 1.0f;  p1.y *= (HEIGHT/2.0f);
-        p2.x += 1.0f;  p2.x *= (WIDTH/2.0f);  p2.y += 1.0f;  p2.y *= (HEIGHT/2.0f);
 
+        glm::vec3 pts[3];
+        pts[0] = world2screen(p0);
+        pts[1] = world2screen(p1);
+        pts[2] = world2screen(p2);
+        
         // draw_triangle(glm::ivec2(p0.xy()), glm::ivec2(p1.xy()), glm::ivec2(p2.xy()), glm::vec4( 0.5, 0.2*cdist(gen), cdist(gen), 1.0));
         if(intensity > 0)
-            draw_triangle(glm::ivec2(p0.xy()), glm::ivec2(p1.xy()), glm::ivec2(p2.xy()), glm::vec4(0.5*intensity, 0.2*cdist(gen)*intensity, cdist(gen)*intensity, 1.0));
+            draw_triangle(pts, glm::vec4(0.5*intensity, 0.2*cdist(gen)*intensity, cdist(gen)*intensity, 1.0));
     } 
 }
 
@@ -552,36 +559,50 @@ void tinyrenderer::draw_line(glm::ivec2 p0, glm::ivec2 p1, glm::vec4 color)
     } 
 }
 
-glm::vec3 tinyrenderer::barycentric(glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2, glm::ivec2 P)
+glm::vec3 tinyrenderer::barycentric(glm::vec3 p0, glm::vec3 p1, glm::vec3 p2, glm::vec3 P)
 {
-    glm::vec3 u = glm::cross(glm::vec3(p2[0]-p0[0], p1[0]-p0[0], p0[0]-P[0]), glm::vec3(p2[1]-p0[1], p1[1]-p0[1], p0[1]-P[1]));
-    /* `pts` and `P` has integer value as coordinates
-       so `abs(u[2])` < 1 means `u[2]` is 0, that means
-       triangle is degenerate, in this case return something with negative coordinates */
-    if (std::abs(u[2])<1) return glm::vec3(-1,1,1);
-    return glm::vec3(1.f-(u.x+u.y)/u.z, u.y/u.z, u.x/u.z);  
+    glm::vec3 s[2];
+
+    for(int i = 2; i--; )
+    {
+        s[i][0] = p2[i]-p0[i];
+        s[i][1] = p1[i]-p0[i];
+        s[i][2] = p0[i]-P[i];
+    }
+
+    glm::vec3 u = glm::cross(s[0], s[1]);
+    
+    if (std::abs(u[2])>1e-2) // dont forget that u[2] is integer. If it is zero then triangle ABC is degenerate
+        return glm::vec3(1.f-(u.x+u.y)/u.z, u.y/u.z, u.x/u.z);
+    return glm::vec3(-1,1,1); // in this case generate negative coordinates, it will be thrown away by the rasterizator 
 }
 
-void tinyrenderer::draw_triangle(glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2, glm::vec4 color)
+void tinyrenderer::draw_triangle(glm::vec3 *pts, glm::vec4 color)
 {
-    glm::ivec2 pts[3]; pts[0] = p0; pts[1] = p1; pts[2] = p2;
-    glm::ivec2 bboxmin(WIDTH-1, HEIGHT-1); 
-    glm::ivec2 bboxmax(0, 0); 
-    glm::ivec2 clamp(WIDTH-1, HEIGHT-1); 
-    for (int i=0; i<3; i++) { 
-        for (int j=0; j<2; j++) { 
-            bboxmin[j] = std::max(0,        std::min(bboxmin[j], pts[i][j])); 
-            bboxmax[j] = std::min(clamp[j], std::max(bboxmax[j], pts[i][j])); 
-        } 
+    glm::vec2 bboxmin( std::numeric_limits<float>::max(),  std::numeric_limits<float>::max());
+    glm::vec2 bboxmax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+    glm::vec2 clamp(WIDTH-1, HEIGHT-1);
+    for (int i=0; i<3; i++)
+    {
+        for (int j=0; j<2; j++)
+        {
+            bboxmin[j] = std::max(0.f,      std::min(bboxmin[j], pts[i][j]));
+            bboxmax[j] = std::min(clamp[j], std::max(bboxmax[j], pts[i][j]));
+        }
+    }
+    glm::vec3 P;
+    for (P.x=bboxmin.x; P.x<=bboxmax.x; P.x++) {
+        for (P.y=bboxmin.y; P.y<=bboxmax.y; P.y++) {
+            glm::vec3 bc_screen  = barycentric(pts[0], pts[1], pts[2], P);
+            if (bc_screen.x<0 || bc_screen.y<0 || bc_screen.z<0) continue;
+            P.z = 0;
+            for (int i=0; i<3; i++) P.z += pts[i][2]*bc_screen[i];
+            if (depth_data[int(P.x+P.y*WIDTH)] < P.z) {
+                depth_data[int(P.x+P.y*WIDTH)] = P.z;
+                set_pixel(glm::ivec2(P.x, P.y), color);
+            }
+        }
     } 
-    glm::ivec2 P; 
-    for (P.x=bboxmin.x; P.x<=bboxmax.x; P.x++) { 
-        for (P.y=bboxmin.y; P.y<=bboxmax.y; P.y++) { 
-            glm::vec3 bc_screen  = barycentric(p0, p1, p2, P); 
-            if (bc_screen.x<0 || bc_screen.y<0 || bc_screen.z<0) continue; 
-            set_pixel(P, color); 
-        } 
-    }  
 }
 
 void tinyrenderer::set_pixel(glm::ivec2 p, glm::vec4 color)
