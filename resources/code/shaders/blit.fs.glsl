@@ -7,5 +7,5 @@ out vec4 fragment_output;
 
 void main()
 {
-	fragment_output = imageLoad(current, ivec2(imageSize(current)*(0.5*(v_pos+vec2(1.0)))))/256.0;
+	fragment_output = imageLoad(current, ivec2(imageSize(current)*(0.5*(vec2(v_pos.x, -v_pos.y)+vec2(1.0)))))/256.0;
 }

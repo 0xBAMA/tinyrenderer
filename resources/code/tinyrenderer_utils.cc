@@ -99,6 +99,14 @@ void tinyrenderer::load_OBJ(std::string filename)
     {
         std::cerr << "Failed to parse .obj" << std::endl;
     }
+
+    cout << "vertex list length: " << vertices.size() << endl;
+    cout << "normal list length: " << normals.size() << endl;
+    cout << "texcoord list length: " << texcoords.size() << endl;
+
+    cout << "vertex index list length: " << triangle_indices.size() << endl;
+    cout << "normal index length: " << normal_indices.size() << endl;
+    cout << "texcoord index length: " << texcoord_indices.size() << endl;
 }
 
 
@@ -457,20 +465,20 @@ void tinyrenderer::draw_wireframe()
     // render triangles as 3 lines making up their outline 
     for(size_t i = 0; i < triangle_indices.size(); i++)
     {
-        glm::ivec3 p0, p1, p2;
-        cout << i << ": ";
-        cout << triangle_indices[i].x << " ";
-        cout << triangle_indices[i].y << " ";
-        cout << triangle_indices[i].z;
-        cout << endl << std::flush;
+        glm::vec3 p0, p1, p2;
+        // cout << i << ": ";
+        // cout << triangle_indices[i].x << " ";
+        // cout << triangle_indices[i].y << " ";
+        // cout << triangle_indices[i].z;
+        // cout << endl << std::flush;
 
-        p0 = vertices[triangle_indices[i].x];
-        p1 = vertices[triangle_indices[i].y];
-        p2 = vertices[triangle_indices[i].z];
+        p0 = vertices[triangle_indices[i].x];  p0.x += 1.0f;  p0.x *= (WIDTH/2.0f);  p0.y += 1.0f;  p0.y *= (HEIGHT/2.0f); 
+        p1 = vertices[triangle_indices[i].y];  p1.x += 1.0f;  p1.x *= (WIDTH/2.0f);  p1.y += 1.0f;  p1.y *= (HEIGHT/2.0f);
+        p2 = vertices[triangle_indices[i].z];  p2.x += 1.0f;  p2.x *= (WIDTH/2.0f);  p2.y += 1.0f;  p2.y *= (HEIGHT/2.0f);
         
-        draw_line(p0.xy(), p1.xy(), glm::vec4( 0.5, 0.2, 0.1, 1.0));
-        draw_line(p1.xy(), p2.xy(), glm::vec4( 0.5, 0.2, 0.1, 1.0));
-        draw_line(p0.xy(), p2.xy(), glm::vec4( 0.5, 0.2, 0.1, 1.0));
+        draw_line(glm::ivec2(p0.xy()), glm::ivec2(p1.xy()), glm::vec4( 0.5, 0.2, 0.1, 1.0));
+        draw_line(glm::ivec2(p1.xy()), glm::ivec2(p2.xy()), glm::vec4( 0.5, 0.2, 0.1, 1.0));
+        draw_line(glm::ivec2(p0.xy()), glm::ivec2(p2.xy()), glm::vec4( 0.5, 0.2, 0.1, 1.0));
     }
 }
 
@@ -534,12 +542,14 @@ void tinyrenderer::draw_triangle(glm::ivec2 p0, glm::ivec2 p1, glm::ivec2 p2, gl
 void tinyrenderer::set_pixel(glm::ivec2 p, glm::vec4 color)
 {
     // base is where red is located, followed by g, b, a
-    int base = (p.x + (WIDTH * p.y)) * 4;
-        
-    image_data[base]   = static_cast<unsigned char>(255.999 * color.r); 
-    image_data[base+1] = static_cast<unsigned char>(255.999 * color.g); 
-    image_data[base+2] = static_cast<unsigned char>(255.999 * color.b); 
-    image_data[base+3] = static_cast<unsigned char>(255.999 * color.a); 
+    int base = (p.x + (WIDTH * (WIDTH-p.y))) * 4;
+    if(base >= 0 && base <= WIDTH*HEIGHT*4)
+    {
+        image_data[base]   = static_cast<unsigned char>(255.999 * color.r); 
+        image_data[base+1] = static_cast<unsigned char>(255.999 * color.g); 
+        image_data[base+2] = static_cast<unsigned char>(255.999 * color.b); 
+        image_data[base+3] = static_cast<unsigned char>(255.999 * color.a); 
+    }
 }
 
 
