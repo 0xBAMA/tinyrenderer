@@ -73,8 +73,8 @@ using std::endl;
 
 // #define WIDTH  800
 // #define HEIGHT 800
-#define WIDTH  4096
-#define HEIGHT 4096
+#define WIDTH  1024
+#define HEIGHT 1024
 
 
 #endif

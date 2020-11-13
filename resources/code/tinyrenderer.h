@@ -3,6 +3,13 @@
 
 #include "includes.h"
 
+enum MODE
+{
+FLAT,
+SMOOTH,
+TEXTURED
+};
+
 class tinyrenderer
 {
 public:
@@ -63,9 +70,13 @@ public:
 
 
 private:
+	MODE current_mode = FLAT;
+	// MODE current_mode = SMOOTH;
+	// MODE current_mode = TEXTURED;
+
 	unsigned diffuse_width, diffuse_height;
 	std::vector<unsigned char> texture_diffuse;	
-	
+
 	// tinyrenderer draw target
 	std::vector<unsigned char> image_data;
 	std::vector<float> depth_data;

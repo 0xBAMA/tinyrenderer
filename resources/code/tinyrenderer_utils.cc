@@ -651,7 +651,10 @@ void tinyrenderer::draw_triangle(glm::vec3 *pts, glm::vec3 *normals, glm::vec3 *
             bboxmax[j] = std::min(clamp[j], std::max(bboxmax[j], pts[i][j]));
         }
     }
+
     glm::vec3 P, N(0), T(0);
+    float intensity;
+    
     for (P.x=bboxmin.x; P.x<=bboxmax.x; P.x++) {
         for (P.y=bboxmin.y; P.y<=bboxmax.y; P.y++) {
             glm::vec3 bc_screen  = barycentric(pts[0], pts[1], pts[2], P);
@@ -669,13 +672,35 @@ void tinyrenderer::draw_triangle(glm::vec3 *pts, glm::vec3 *normals, glm::vec3 *
             if (depth_data[int(P.x+P.y*WIDTH)] < P.z) {
                 depth_data[int(P.x+P.y*WIDTH)] = P.z;
 
-                // shading
-                float intensity = std::min(std::max(glm::dot(N, glm::normalize(glm::vec3(5,8,9))), 0.25f), 2.0f);  
-                T = texcoords[0]*bc_screen[0] + texcoords[1]*bc_screen[1] + texcoords[2]*bc_screen[2]; 
+                glm::vec3 light_position = glm::normalize(glm::vec3(5,8,9));
+                float light_min = 0.25;
+                float light_max = 2.0;
                 
-                // set_pixel(glm::ivec2(P.x, P.y), glm::vec4(glm::vec3(intensity*color.rgb()), color.a));
-                // set_pixel(glm::ivec2(P.x, P.y), glm::vec4(glm::vec3(texcoords[1]), color.a));
-                set_pixel(glm::ivec2(P.x, P.y), glm::vec4(intensity*diffuse_texture_ref(T).rgb(), 1.0));
+                // shading
+                switch(current_mode)
+                {
+                    case FLAT:
+                        // N = glm::normalize(glm::cross(pts[0]-pts[2], pts[0]-pts[1])); // might revisit this, not currently working correctly
+                        N = (normals[0] + normals[1] + normals[2])/3.0f; // going to just use the averaged vertex normals for the time being 
+                        intensity = std::min(std::max(glm::dot(N, light_position), light_min), light_max);  
+                        set_pixel(glm::ivec2(P.x, P.y), glm::vec4(glm::vec3(intensity*color.rgb()), color.a));
+                        break;
+                        
+                    case SMOOTH:
+                        intensity = std::min(std::max(glm::dot(N, light_position), light_min), light_max);  
+                        set_pixel(glm::ivec2(P.x, P.y), glm::vec4(glm::vec3(intensity*color.rgb()), color.a));
+                        break;
+                        
+                    case TEXTURED:
+                        intensity = std::min(std::max(glm::dot(N, light_position), light_min), light_max);  
+                        T = texcoords[0]*bc_screen[0] + texcoords[1]*bc_screen[1] + texcoords[2]*bc_screen[2]; 
+                        set_pixel(glm::ivec2(P.x, P.y), glm::vec4(intensity*diffuse_texture_ref(T).rgb(), 1.0));
+                        break;
+                        
+                    default:
+
+                        break;
+                }
             }
         }
     } 
