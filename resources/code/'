@@ -494,7 +494,7 @@ glm::vec4 tinyrenderer::diffuse_texture_ref(glm::vec3 sample)
     int sample_x = int(sample.x * diffuse_width);
     int sample_y = int((1.0-sample.y) * diffuse_height);
 
-    // cout << "referencing image at " << sample_x << " " << sample_y << endl;
+    cout << "referencing image at " << sample_x << " " << sample_y << endl;
     
     int base = (sample_x + (diffuse_width * sample_y)) * 4;
 
@@ -657,25 +657,26 @@ void tinyrenderer::draw_triangle(glm::vec3 *pts, glm::vec3 *normals, glm::vec3 *
             glm::vec3 bc_screen  = barycentric(pts[0], pts[1], pts[2], P);
             if (bc_screen.x<0 || bc_screen.y<0 || bc_screen.z<0) continue;
             P.z = 0;
-
+            
             for (int i=0; i<3; i++)
             {
                 P.z += pts[i][2]*bc_screen[i];
                 N += normals[i]*bc_screen[i];
+                T += texcoords[i]*bc_screen[i];
             }
 
             N = glm::normalize(N);
+            T = glm::normalize(T);
             
             if (depth_data[int(P.x+P.y*WIDTH)] < P.z) {
                 depth_data[int(P.x+P.y*WIDTH)] = P.z;
 
                 // shading
-                float intensity = std::min(std::max(glm::dot(N, glm::normalize(glm::vec3(5,8,9))), 0.25f), 2.0f);  
-                T = texcoords[0]*bc_screen[0] + texcoords[1]*bc_screen[1] + texcoords[2]*bc_screen[2]; 
-                
+                float intensity = std::min(std::max(glm::dot(N, glm::normalize(glm::vec3(5,8,9))), 0.1f), 2.0f);  
+
                 // set_pixel(glm::ivec2(P.x, P.y), glm::vec4(glm::vec3(intensity*color.rgb()), color.a));
-                // set_pixel(glm::ivec2(P.x, P.y), glm::vec4(glm::vec3(texcoords[1]), color.a));
-                set_pixel(glm::ivec2(P.x, P.y), glm::vec4(intensity*diffuse_texture_ref(T).rgb(), 1.0));
+                // set_pixel(glm::ivec2(P.x, P.y), glm::vec4(glm::vec3(intensity*T), color.a));
+                // set_pixel(glm::ivec2(P.x, P.y), diffuse_texture_ref(T));
             }
         }
     } 
