@@ -335,7 +335,7 @@ void tinyrenderer::gl_setup()
     std::uniform_real_distribution<float> cdist(0.0, 1.0); 
 
     // for(int i = 0; i < 50000; i++)
-        // draw_line(glm::ivec2(pdistw(gen), pdisth(gen)), glm::ivec2(pdistw(gen), pdisth(gen)), glm::vec4(cdist(gen), cdist(gen), cdist(gen), 1.0));
+        // draw_line(glm::ivec2(pdistw(gen), pdisth(gen)), glm::ivec2(pdistw(gen), pdisth(gen)), glm::vec4(0.5*cdist(gen), 0.2*cdist(gen), cdist(gen), 1.0));
 
     // draw_wireframe();
     draw_triangles();
@@ -484,31 +484,72 @@ glm::vec3 tinyrenderer::world2screen(glm::vec3 v)
     return glm::vec3(int((v.x+1.0f)*(WIDTH/2.0f)), int((v.y+1.0f)*(HEIGHT/2.0f)), v.z);
 }
 
+
+glm::mat4 tinyrenderer::rotation(glm::vec3 a, float angle)
+{//thanks to Neil Mendoza via http://www.neilmendoza.com/glsl-rotation-about-an-arbitrary-axis/
+    a = glm::normalize(a); //a is the axis
+    float s = sin(angle);
+    float c = cos(angle);
+    float oc = 1.0 - c;
+
+    return glm::mat4(oc * a.x * a.x + c,         oc * a.x * a.y - a.z * s,  oc * a.z * a.x + a.y * s,  0.0,
+                     oc * a.x * a.y + a.z * s,   oc * a.y * a.y + c,        oc * a.y * a.z - a.x * s,  0.0,
+                     oc * a.z * a.x - a.y * s,   oc * a.y * a.z + a.x * s,  oc * a.z * a.z + c,        0.0,
+                     0.0,                        0.0,                       0.0,                       1.0);
+}
+
 void tinyrenderer::draw_triangles()
 {
-    std::default_random_engine gen;
+    std::default_random_engine gen(std::chrono::high_resolution_clock::now().time_since_epoch().count());
     std::uniform_real_distribution<float> cdist(0.0, 1.0); 
 
+    glm::mat4 transform(0.95f); // initialize with identity, scaled down slightly
+
+    transform = rotation(glm::vec3(0,1,0), 0.69) * rotation(glm::vec3(1,0,0), -0.3) * transform; // compose transforms into one
+    
+    glm::mat4 ntransform = glm::transpose(glm::inverse(transform)); // transpose of the inverse is used for the normals
+
+    transform = glm::lookAt(glm::vec3(2,2,-4), glm::vec3(0,0,0), glm::vec3(0,1,0)) * transform;   // view matrix
+    transform = glm::perspective(glm::radians(90.0f), float(WIDTH)/float(HEIGHT), 0.25f, 10.0f) * transform; // perspective transform
+    
     // render triangles as triangles
     for(size_t i = 0; i < triangle_indices.size(); i++)
     {
         glm::vec3 p0, p1, p2;
+        glm::vec3 n0, n1, n2;
+        glm::vec3 t0, t1, t2;
 
-        p0 = vertices[triangle_indices[i].x];  
-        p1 = vertices[triangle_indices[i].y];
-        p2 = vertices[triangle_indices[i].z];
+        p0 = (transform*vertices[triangle_indices[i].x]).xyz();  
+        p1 = (transform*vertices[triangle_indices[i].y]).xyz();
+        p2 = (transform*vertices[triangle_indices[i].z]).xyz();
 
-        glm::vec3 n = glm::normalize(glm::cross(p2-p0, p1-p0));
-        float intensity = glm::dot(n, glm::vec3(0,0,-1));
+        n0 = (ntransform*glm::vec4(normals[normal_indices[i].x], 1.0f)).xyz();
+        n1 = (ntransform*glm::vec4(normals[normal_indices[i].y], 1.0f)).xyz();
+        n2 = (ntransform*glm::vec4(normals[normal_indices[i].z], 1.0f)).xyz();
 
+        t0 = texcoords[texcoord_indices[i].x];
+        t1 = texcoords[texcoord_indices[i].y];
+        t2 = texcoords[texcoord_indices[i].z];
+
+        glm::vec4 color = glm::vec4(0.5, 0.2*cdist(gen), cdist(gen), 1.0);
+        // glm::vec4 color = glm::vec4(0.5, 0.3, 0.2, 1.0);
+    
         glm::vec3 pts[3];
         pts[0] = world2screen(p0);
         pts[1] = world2screen(p1);
         pts[2] = world2screen(p2);
+
+        glm::vec3 normals[3];
+        normals[0] = n0;
+        normals[1] = n1;
+        normals[2] = n2;
+
+        glm::vec3 texcoords[3];
+        texcoords[0] = t0;
+        texcoords[1] = t1;
+        texcoords[2] = t2;
         
-        // draw_triangle(glm::ivec2(p0.xy()), glm::ivec2(p1.xy()), glm::ivec2(p2.xy()), glm::vec4( 0.5, 0.2*cdist(gen), cdist(gen), 1.0));
-        if(intensity > 0)
-            draw_triangle(pts, glm::vec4(0.5*intensity, 0.2*cdist(gen)*intensity, cdist(gen)*intensity, 1.0));
+        draw_triangle(pts, normals, texcoords, color);
     } 
 }
 
@@ -577,7 +618,7 @@ glm::vec3 tinyrenderer::barycentric(glm::vec3 p0, glm::vec3 p1, glm::vec3 p2, gl
     return glm::vec3(-1,1,1); // in this case generate negative coordinates, it will be thrown away by the rasterizator 
 }
 
-void tinyrenderer::draw_triangle(glm::vec3 *pts, glm::vec4 color)
+void tinyrenderer::draw_triangle(glm::vec3 *pts, glm::vec3 *normals, glm::vec3 *texcoords, glm::vec4 color)
 {
     glm::vec2 bboxmin( std::numeric_limits<float>::max(),  std::numeric_limits<float>::max());
     glm::vec2 bboxmax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
@@ -590,16 +631,28 @@ void tinyrenderer::draw_triangle(glm::vec3 *pts, glm::vec4 color)
             bboxmax[j] = std::min(clamp[j], std::max(bboxmax[j], pts[i][j]));
         }
     }
-    glm::vec3 P;
+    glm::vec3 P, N(0);
     for (P.x=bboxmin.x; P.x<=bboxmax.x; P.x++) {
         for (P.y=bboxmin.y; P.y<=bboxmax.y; P.y++) {
             glm::vec3 bc_screen  = barycentric(pts[0], pts[1], pts[2], P);
             if (bc_screen.x<0 || bc_screen.y<0 || bc_screen.z<0) continue;
             P.z = 0;
-            for (int i=0; i<3; i++) P.z += pts[i][2]*bc_screen[i];
+            
+            for (int i=0; i<3; i++)
+            {
+                P.z += pts[i][2]*bc_screen[i];
+                N += normals[i]*bc_screen[i];
+            }
+
+            N = glm::normalize(N);
+            
             if (depth_data[int(P.x+P.y*WIDTH)] < P.z) {
                 depth_data[int(P.x+P.y*WIDTH)] = P.z;
-                set_pixel(glm::ivec2(P.x, P.y), color);
+
+                // shading
+                float intensity = std::min(std::max(glm::dot(N, glm::normalize(glm::vec3(5,8,9))), 0.1f), 2.0f);  
+
+                set_pixel(glm::ivec2(P.x, P.y), glm::vec4(glm::vec3(intensity*color.rgb()), color.a));
             }
         }
     } 
@@ -611,6 +664,12 @@ void tinyrenderer::set_pixel(glm::ivec2 p, glm::vec4 color)
     int base = (p.x + (WIDTH * (WIDTH-p.y))) * 4;
     if(base >= 0 && base <= WIDTH*HEIGHT*4)
     {
+        // float gamma = 0.9f;
+        // image_data[base]   = static_cast<unsigned char>(255.999 * std::pow(color.r, gamma)); 
+        // image_data[base+1] = static_cast<unsigned char>(255.999 * std::pow(color.g, gamma)); 
+        // image_data[base+2] = static_cast<unsigned char>(255.999 * std::pow(color.b, gamma)); 
+        // image_data[base+3] = static_cast<unsigned char>(255.999 * color.a); 
+
         image_data[base]   = static_cast<unsigned char>(255.999 * color.r); 
         image_data[base+1] = static_cast<unsigned char>(255.999 * color.g); 
         image_data[base+2] = static_cast<unsigned char>(255.999 * color.b); 

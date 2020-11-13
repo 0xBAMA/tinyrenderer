@@ -41,10 +41,11 @@ private:
 	// tinyrenderer helper funcs
 	glm::vec3 barycentric(glm::vec3 p0, glm::vec3 p1, glm::vec3 p2, glm::vec3 P);
 	glm::vec3 world2screen(glm::vec3 v);
+	glm::mat4 rotation(glm::vec3 a, float angle);
 
 	// tinyrenderer drawing functions
 	void draw_line(glm::ivec2 p0, glm::ivec2 p1, glm::vec4 color);
-	void draw_triangle(glm::vec3 *pts, glm::vec4 color);
+	void draw_triangle(glm::vec3 *pts, glm::vec3 *normals, glm::vec3 *texcoords, glm::vec4 color);
 	void set_pixel(glm::ivec2 p, glm::vec4 color);
 
 public:
