@@ -13,6 +13,7 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <iomanip>
 #include <vector>
 #include <deque>
 #include <chrono>
@@ -71,10 +72,11 @@ using std::endl;
 // need to incorporate the BigInt stuff in order to use
 // #include "vat.h"
 
-// #define WIDTH  800
-// #define HEIGHT 800
-#define WIDTH  1024
-#define HEIGHT 1024
+#define WIDTH  400
+#define HEIGHT 400
+
+// #define WIDTH  1024
+// #define HEIGHT 1024
 
 
 #endif

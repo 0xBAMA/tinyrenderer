@@ -323,26 +323,15 @@ void tinyrenderer::gl_setup()
     ///////////////////////
     
     t1 = std::chrono::high_resolution_clock::now();
-    image_data.resize(HEIGHT*WIDTH*4, 0); // 4 channels, might do something with alpha eventually
-    depth_data.resize(HEIGHT*WIDTH, -std::numeric_limits<float>::max()); // initialize z buffer at most negative value
 
-    //do the software rendering part
-    // initially doing some random lines, for testing
-
-    std::default_random_engine gen;
-    std::uniform_int_distribution<int> pdistw(0,WIDTH); 
-    std::uniform_int_distribution<int> pdisth(0,HEIGHT); 
-    std::uniform_real_distribution<float> cdist(0.0, 1.0); 
-
+    clear_buffers(); // zero out color, depth
+    
     unsigned error = lodepng::decode(texture_diffuse, diffuse_width, diffuse_height, std::string("resources/obj/african_head/african_head_diffuse.png").c_str());
+    // unsigned error = lodepng::decode(texture_diffuse, diffuse_width, diffuse_height, std::string("resources/obj/grid.png").c_str());
 
     //report any errors
     if(error) cout << "decode error (diffuse texture) " << error << ": " << lodepng_error_text(error) << endl; 
     
-    // for(int i = 0; i < 50000; i++)
-        // draw_line(glm::ivec2(pdistw(gen), pdisth(gen)), glm::ivec2(pdistw(gen), pdisth(gen)), glm::vec4(0.5*cdist(gen), 0.2*cdist(gen), cdist(gen), 1.0));
-
-    // draw_wireframe();
     draw_triangles();
     
     t2 = std::chrono::high_resolution_clock::now();
@@ -353,8 +342,7 @@ void tinyrenderer::gl_setup()
     t1 = std::chrono::high_resolution_clock::now();
 
     //png output
-    std::string filename = std::string("test.png");
-    lodepng::encode(filename.c_str(), image_data, WIDTH, HEIGHT); 
+    output_frame(std::string("test.png"));
     
     t2 = std::chrono::high_resolution_clock::now();
     png_output_time = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
@@ -374,9 +362,7 @@ void tinyrenderer::gl_setup()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     // buffer the averaged data to the GPU
-    glBindTexture(GL_TEXTURE_2D, display_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8UI, WIDTH, HEIGHT, 0, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, &image_data[0]);
-    glBindImageTexture(1, display_texture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA8UI);
+    buffer_GPU_texture();
     
     t2 = std::chrono::high_resolution_clock::now();
     texture_buffer_time = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
@@ -406,6 +392,49 @@ void tinyrenderer::draw_everything()
     glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);   // from hsv picker
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                     // clear the background
 
+
+    static int index = 0; // indexed output
+
+    // start frame timing
+    auto t1 = std::chrono::high_resolution_clock::now();
+
+    if(index < 400)
+    {
+        // update transforms, light position
+        transform = glm::mat4(0.95f); // initialize with identity, scaled down slightly
+        // transform = rotation(glm::vec3(0,1,0), 0.69+(6.28 * (index/400.0))) * rotation(glm::vec3(1,0,0), 0.1*sin(6.28*2*(index/400.0))) * transform; // compose transforms into one
+        transform = rotation(glm::vec3(1,0,0), -0.5-0.15*sin(6.28*2*(index/400.0))) * rotation(glm::vec3(0,1,0), 0.69+(6.28*(index/400.0))) * transform; // compose transforms into one
+
+        ntransform = glm::transpose(glm::inverse(transform)); // transpose of the inverse of the model transform is used for the normals
+
+        transform = glm::lookAt(glm::vec3(2,2,-4), glm::vec3(0,0,0), glm::vec3(0,1,0)) * transform;   // view matrix
+        transform = glm::perspective(glm::radians(90.0f), float(WIDTH)/float(HEIGHT), 0.25f, 10.0f) * transform; // perspective transform 
+    
+
+        light_position = glm::normalize(glm::vec3(1+4.0*sin(6.28*2*(index/400.0)),8+3.0*sin(6.28*(index/400.0)),9));
+    
+        // clear the color and depth buffers
+        clear_buffers();
+    
+        // draw the model
+        draw_triangles();
+    
+        // output PNG frame to frames/frameXXX.png
+        std::stringstream ss;
+        ss << "frames/frame" << std::setfill('0') << std::setw(3) << index << ".png";
+        output_frame(ss.str());
+    
+        // buffer texture
+        buffer_GPU_texture();
+    }
+
+    index++;
+    
+    // end frame timing
+    auto t2 = std::chrono::high_resolution_clock::now();
+    
+    float frame_time = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
+    
     // texture display
     glUseProgram(display_shader);
     glBindVertexArray( display_vao );
@@ -422,7 +451,7 @@ void tinyrenderer::draw_everything()
 
     // info window
     ImGui::SetNextWindowPos(ImVec2(10,10));
-    ImGui::SetNextWindowSize(ImVec2(260,105));
+    ImGui::SetNextWindowSize(ImVec2(260,117));
     ImGui::Begin("Info", NULL, 0);
 
     //do the other widgets
@@ -438,6 +467,7 @@ void tinyrenderer::draw_everything()
     ImGui::Text(" Render:             %7.2f ms", software_renderer_time/1000.0);
     ImGui::Text(" PNG Output:         %7.2f ms", png_output_time/1000.0);
     ImGui::Text(" Texture Buffering:  %7.2f ms", texture_buffer_time/1000.0);
+    ImGui::Text(" Frame Time:         %7.2f ms", frame_time/1000.0);
 
     
     ImGui::End();
@@ -465,6 +495,26 @@ void tinyrenderer::draw_everything()
     }
 }
 
+void tinyrenderer::clear_buffers()
+{
+    image_data.resize(0);
+    depth_data.resize(0);
+    
+    image_data.resize(HEIGHT*WIDTH*4, 0); // 4 channels, might do something with alpha eventually
+    depth_data.resize(HEIGHT*WIDTH, -std::numeric_limits<float>::max()); // initialize z buffer at most negative value
+}
+
+void tinyrenderer::buffer_GPU_texture()
+{
+    glBindTexture(GL_TEXTURE_2D, display_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8UI, WIDTH, HEIGHT, 0, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, &image_data[0]);
+    glBindImageTexture(1, display_texture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA8UI);
+}
+
+void tinyrenderer::output_frame(std::string filename)
+{
+    lodepng::encode(filename.c_str(), image_data, WIDTH, HEIGHT); 
+}
 
 
 void tinyrenderer::draw_wireframe()
@@ -523,14 +573,7 @@ void tinyrenderer::draw_triangles()
     std::default_random_engine gen(std::chrono::high_resolution_clock::now().time_since_epoch().count());
     std::uniform_real_distribution<float> cdist(0.0, 1.0); 
 
-    glm::mat4 transform(0.95f); // initialize with identity, scaled down slightly
 
-    transform = rotation(glm::vec3(0,1,0), 0.69) * rotation(glm::vec3(1,0,0), -0.3) * transform; // compose transforms into one
-    
-    glm::mat4 ntransform = glm::transpose(glm::inverse(transform)); // transpose of the inverse is used for the normals
-
-    transform = glm::lookAt(glm::vec3(2,2,-4), glm::vec3(0,0,0), glm::vec3(0,1,0)) * transform;   // view matrix
-    transform = glm::perspective(glm::radians(90.0f), float(WIDTH)/float(HEIGHT), 0.25f, 10.0f) * transform; // perspective transform
     
     // render triangles as triangles
     for(size_t i = 0; i < triangle_indices.size(); i++)
@@ -672,7 +715,6 @@ void tinyrenderer::draw_triangle(glm::vec3 *pts, glm::vec3 *normals, glm::vec3 *
             if (depth_data[int(P.x+P.y*WIDTH)] < P.z) {
                 depth_data[int(P.x+P.y*WIDTH)] = P.z;
 
-                glm::vec3 light_position = glm::normalize(glm::vec3(5,8,9));
                 float light_min = 0.25;
                 float light_max = 2.0;
                 

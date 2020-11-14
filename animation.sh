@@ -1,0 +1,1 @@
+cd frames && ffmpeg -i frame%03d.png -vf palettegen=reserve_transparent=1 palette.png && ffmpeg -framerate 30 -i frame%03d.png -i palette.png -lavfi paletteuse=alpha_threshold=128 -gifflags -offsetting -f gif -plays 0 -compression_level 6 -q:v 50 out.gif && cd ..

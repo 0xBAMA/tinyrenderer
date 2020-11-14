@@ -52,6 +52,9 @@ private:
 	glm::vec4 diffuse_texture_ref(glm::vec3 sample); 
 		
 	// tinyrenderer drawing functions
+	void clear_buffers();
+	void output_frame(std::string filename);
+	void buffer_GPU_texture();
 	void draw_line(glm::ivec2 p0, glm::ivec2 p1, glm::vec4 color);
 	void draw_triangle(glm::vec3 *pts, glm::vec3 *normals, glm::vec3 *texcoords, glm::vec4 color);
 	void set_pixel(glm::ivec2 p, glm::vec4 color);
@@ -70,10 +73,17 @@ public:
 
 
 private:
-	MODE current_mode = FLAT;
+	// MODE current_mode = FLAT;
 	// MODE current_mode = SMOOTH;
-	// MODE current_mode = TEXTURED;
+	MODE current_mode = TEXTURED;
 
+	// model transforms
+	glm::mat4 transform;
+	glm::mat4 ntransform;
+		
+	// light position
+	glm::vec3 light_position;
+		
 	unsigned diffuse_width, diffuse_height;
 	std::vector<unsigned char> texture_diffuse;	
 
